@@ -114,7 +114,7 @@ export default function MenuPage() {
               </button>
             ))}
             <button role="tab" aria-selected={activeCat === 'duo'} className={`category-duo ${activeCat === 'duo' ? 'active' : ''}`} onClick={() => goToCategory('duo')}>
-              Offres du moment · 2 bowls + 2 boissons · CHF 39.–
+              Offres du moment
             </button>
           </div>
         </nav>
@@ -164,7 +164,7 @@ export default function MenuPage() {
       <div className="sticky-footer menu-footer">
         <span>{cartCount ? `${cartCount} article${cartCount > 1 ? 's' : ''}` : 'Choisissez votre bowl'}</span>
         <button onClick={() => navigate('/panier')} aria-label={`Voir le panier, ${cartCount} article${cartCount > 1 ? 's' : ''}`}>
-          <ShoppingBag /><b>{cartCount}</b>
+          <ShoppingBag /><span>Panier</span><b>{cartCount}</b>
         </button>
       </div>
     </div>

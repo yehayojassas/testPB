@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Clock, Leaf, Lock, MapPin, ShoppingBag } from '@phosphor-icons/react';
+import { ArrowRight, Clock, EnvelopeSimple, Leaf, Lock, MapPin, Phone, ShoppingBag } from '@phosphor-icons/react';
 import { Header, PrimaryButton } from '../components/ui.jsx';
 import { promos } from '../data/catalog.js';
 
@@ -71,8 +71,27 @@ export default function Home() {
         </div>
       </section>
       <footer className="site-footer">
-        <button onClick={() => navigate('/confidentialite')}>Politique de confidentialité</button>
-        <span>© {new Date().getFullYear()} Planet Bowl</span>
+        <div className="footer-top">
+          <div className="footer-brand">
+            <img src="/images/logo.png" alt="Planet Bowl" />
+            <p>Des bowls frais et généreux, préparés minute dans 9 restaurants en Suisse romande.</p>
+          </div>
+          <div className="footer-col">
+            <h3>Nous contacter</h3>
+            <a href="tel:+41212184948"><Phone />021 218 49 48</a>
+            <a href="mailto:planetbowl.info@gmail.com"><EnvelopeSimple />planetbowl.info@gmail.com</a>
+            <span><MapPin />Boulevard de Grancy 58, 1006 Lausanne</span>
+          </div>
+          <div className="footer-col">
+            <h3>Planet Bowl</h3>
+            <button onClick={() => navigate('/menu')}>Notre menu</button>
+            <button onClick={() => navigate('/restaurants')}>Nos restaurants</button>
+            <button onClick={() => navigate('/confidentialite')}>Politique de confidentialité</button>
+          </div>
+        </div>
+        <div className="footer-bottom">
+          <span>© {new Date().getFullYear()} Planet Bowl — CSTE Innovation</span>
+        </div>
       </footer>
     </div>
   );
