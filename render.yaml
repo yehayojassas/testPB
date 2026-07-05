@@ -1,0 +1,18 @@
+# Déploiement Render (New → Blueprint, ou valeurs à recopier en création manuelle)
+services:
+  - type: web
+    name: planet-bowl
+    runtime: static
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    # Indispensable pour React Router : toutes les URL renvoient vers l'app
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      # Valeurs à saisir dans le dashboard Render (jamais dans ce fichier)
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
