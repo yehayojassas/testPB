@@ -68,6 +68,12 @@ android {
     }
 }
 
+ksp {
+    // Requis par @Database(exportSchema = true) : conserve un historique des schemas Room
+    // pour outiller de futures migrations plutot que de partir de exportSchema = false.
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
