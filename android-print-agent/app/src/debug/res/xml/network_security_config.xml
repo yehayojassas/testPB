@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Variante DEBUG UNIQUEMENT (app/src/debug/res/.../network_security_config.xml
+    remplace la version release d'app/src/main pour ce build type). Autorise le
+    clear-text HTTP au niveau reseau Android, ce qui est necessaire pour que le
+    toggle "mode developpement" de l'ecran Reglages ait un effet reel : sans ce
+    fichier, meme avec le toggle active, le systeme bloquerait la requete avant
+    qu'elle n'atteigne OkHttp.
+
+    Le toggle applicatif (SettingsUiState.developerModeEnabled) reste la
+    seconde barriere : Validators.validateApiBaseUrl() refuse toujours http://
+    tant que ce toggle n'est pas actif, meme en build debug.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

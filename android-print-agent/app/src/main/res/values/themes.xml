@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Theme XML minimal requis pour l'attribut android:theme du manifest et pour la
+         fenetre d'activite avant que Compose ne prenne le relais (MaterialTheme dans
+         ui/theme/Theme.kt gère tout le theming visuel de l'application). -->
+    <style name="Theme.PrintAgent" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>
