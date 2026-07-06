@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Planète Bowl — Agent d\'impression</string>
+    <string name="notification_channel_name">Agent d\'impression</string>
+    <string name="notification_channel_description">Notification permanente pendant que l\'agent surveille les commandes à imprimer.</string>
+</resources>

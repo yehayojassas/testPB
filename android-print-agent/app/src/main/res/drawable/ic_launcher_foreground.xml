@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Silhouette simplifiee de bol/ticket : icone provisoire, a remplacer par
+     l'asset de marque definitif avant publication. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M29,46 h50 a4,4 0 0 1 4,4 a25,21 0 0 1 -25,21 a25,21 0 0 1 -25,-21 a4,4 0 0 1 -4,-4 z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M38,40 a16,10 0 0 1 32,0 z" />
+</vector>

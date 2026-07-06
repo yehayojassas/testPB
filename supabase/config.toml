@@ -1,0 +1,8 @@
+project_id = "gzhhbluatxpnymrryygy"
+
+# print-agent utilise son propre token statique (PRINT_AGENT_TOKEN) verifie dans le
+# code de la fonction, pas un JWT Supabase — il faut donc desactiver la verification
+# JWT automatique de la passerelle, sinon tout appel avec ce token recoit
+# "UNAUTHORIZED_INVALID_JWT_FORMAT" avant meme d'atteindre notre code.
+[functions.print-agent]
+verify_jwt = false

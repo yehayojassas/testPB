@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- allowBackup="false" dans le manifest : ce fichier n'est present que pour
+     satisfaire l'attribut android:fullBackupContent exige sur certaines
+     versions d'Android ; aucune donnee n'est de toute facon sauvegardee. -->
+<full-backup-content />

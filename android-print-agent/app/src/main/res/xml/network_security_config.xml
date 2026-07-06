@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Interdit le clear-text HTTP par defaut (obligatoire pour l'URL de l'API
+    backend en production, qui doit toujours etre en https).
+
+    L'imprimante ESC/POS, elle, est jointe en TCP brut (socket, port 9100),
+    pas en HTTP : cette config ne la concerne pas et ne bloque rien de ce
+    cote-la.
+
+    Le toggle "mode developpement" des reglages n'autorise le clear-text HTTP
+    que sur les builds debug (voir BuildConfig.ALLOW_CLEARTEXT_HTTP, positionne
+    par app/build.gradle.kts) ; en release, cleartextTrafficPermitted="false"
+    s'applique sans exception possible depuis l'UI.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>
