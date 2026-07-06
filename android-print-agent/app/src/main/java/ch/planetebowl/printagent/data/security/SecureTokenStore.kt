@@ -16,11 +16,8 @@ import javax.inject.Singleton
 @Singleton
 class SecureTokenStore @Inject constructor(
     @ApplicationContext context: Context,
+    masterKey: MasterKey,
 ) {
-
-    private val masterKey = MasterKey.Builder(context)
-        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-        .build()
 
     private val preferences: SharedPreferences = EncryptedSharedPreferences.create(
         context,

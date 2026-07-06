@@ -62,6 +62,17 @@ interface PrintJobDao {
         failedManualReview: PrintStatus = PrintStatus.FAILED_MANUAL_REVIEW,
     ): Int
 
-    @Query("SELECT * FROM print_jobs WHERE status = :status ORDER BY receivedAt ASC")
-    suspend fun findPendingAck(status: PrintStatus = PrintStatus.PRINTED_PENDING_ACK): List<PrintJobEntity>
+    /**
+     * nextRetryAt est reutilise pour l'ack (pas de colonne dediee dans le schema) : NULL
+     * juste apres l'impression (premiere tentative d'accuse immediate), puis repousse par
+     * BackoffPolicy a chaque echec d'accuse. Voir QueueRepositoryImpl.confirmPrinted.
+     */
+    @Query(
+        """
+        SELECT * FROM print_jobs
+        WHERE status = :status AND (nextRetryAt IS NULL OR nextRetryAt <= :now)
+        ORDER BY receivedAt ASC
+        """
+    )
+    suspend fun findPendingAckReady(now: Instant, status: PrintStatus = PrintStatus.PRINTED_PENDING_ACK): List<PrintJobEntity>
 }
