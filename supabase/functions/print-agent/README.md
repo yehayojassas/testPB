@@ -58,10 +58,15 @@ curl -s "$BASE_URL/jobs?restaurantId=$RESTAURANT_ID&limit=20" \
   -H "Authorization: Bearer $PRINT_AGENT_TOKEN"
 ```
 
+Réponse `200` : un tableau JSON brut (pas d'enveloppe), un objet par commande.
+
 ### 2. Réclamer un ticket (claim)
 
+Pas de `restaurantId` ici : la tablette ne le connaît déjà que via `/jobs`
+(filtré côté serveur) ; `orderId` seul identifie le job à réclamer.
+
 ```bash
-curl -s -X POST "$BASE_URL/jobs/$ORDER_ID/claim?restaurantId=$RESTAURANT_ID" \
+curl -s -X POST "$BASE_URL/jobs/$ORDER_ID/claim" \
   -H "Authorization: Bearer $PRINT_AGENT_TOKEN" \
   -H "Idempotency-Key: $(uuidgen)"
 ```

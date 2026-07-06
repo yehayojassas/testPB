@@ -87,7 +87,11 @@ create trigger orders_enqueue_print_job
 -- donc les seules autorisées à écrire dans print_jobs, appelées uniquement
 -- par l'Edge Function via la clé service_role (jamais par anon/authenticated).
 
-create or replace function public.claim_print_job(p_order_id uuid, p_restaurant_id uuid)
+-- p_restaurant_id : la tablette ne l'envoie pas sur /claim (elle ne le connaît
+-- déjà que via /jobs, filtré côté serveur) — seul order_id identifie le job à
+-- réclamer ici. order_id est un uuid non devinable et l'appel est déjà protégé
+-- par le token print-agent, donc pas de contrôle croisé de restaurant_id requis.
+create or replace function public.claim_print_job(p_order_id uuid)
 returns jsonb
 language plpgsql security definer
 set search_path = public
@@ -101,7 +105,6 @@ begin
          claim_expires_at = now() + interval '90 seconds',
          attempt_count = attempt_count + 1
    where order_id = p_order_id
-     and restaurant_id = p_restaurant_id
      and (status = 'PENDING' or (status = 'CLAIMED' and claim_expires_at < now()))
      and attempt_count < max_attempts
    returning * into v_row;
@@ -115,8 +118,7 @@ begin
   end if;
 
   -- Rien mis à jour : on relit la ligne pour renvoyer le bon code d'erreur au client.
-  select * into v_row from public.print_jobs
-    where order_id = p_order_id and restaurant_id = p_restaurant_id;
+  select * into v_row from public.print_jobs where order_id = p_order_id;
 
   if not found then
     return jsonb_build_object('resultStatus', 'NOT_FOUND');
@@ -213,10 +215,10 @@ $$;
 -- authenticated) : elles contournent volontairement les vérifications
 -- métier normales (place_order, RLS) et ne doivent être invoquées que par
 -- l'Edge Function print-agent, authentifiée avec la clé service_role.
-revoke execute on function public.claim_print_job(uuid, uuid) from public;
+revoke execute on function public.claim_print_job(uuid) from public;
 revoke execute on function public.confirm_print_job(uuid, uuid, timestamptz) from public;
 revoke execute on function public.release_print_job(uuid, uuid, text, text) from public;
 
-grant execute on function public.claim_print_job(uuid, uuid) to service_role;
+grant execute on function public.claim_print_job(uuid) to service_role;
 grant execute on function public.confirm_print_job(uuid, uuid, timestamptz) to service_role;
 grant execute on function public.release_print_job(uuid, uuid, text, text) to service_role;

@@ -8,8 +8,8 @@
 // définies dans supabase/migrations/0006_print_agent.sql).
 //
 // Routes exposées sous /functions/v1/print-agent :
-//   GET  /jobs?restaurantId=<uuid>&limit=20
-//   POST /jobs/{orderId}/claim?restaurantId=<uuid>
+//   GET  /jobs?restaurantId=<uuid>&limit=20   -> tableau JSON brut (pas d'enveloppe)
+//   POST /jobs/{orderId}/claim                 (pas de restaurantId : voir handleClaim)
 //   POST /jobs/{orderId}/printed   { claimToken, printedAt }
 //   POST /jobs/{orderId}/failed    { claimToken, errorCode, errorMessage }
 //
@@ -296,18 +296,16 @@ async function handleListJobs(supabase: SupabaseClient, url: URL): Promise<Respo
     .map(rowToPayload)
     .filter((job): job is PrintJobPayload => job !== null);
 
-  return jsonResponse({ jobs });
+  // Contrat GET /jobs : tableau JSON brut (List<JobDto> côté Android), pas d'enveloppe.
+  return jsonResponse(jobs);
 }
 
-async function handleClaim(supabase: SupabaseClient, url: URL, orderId: string): Promise<Response> {
-  const restaurantId = url.searchParams.get("restaurantId");
-  if (!isUuid(restaurantId)) {
-    return jsonResponse({ code: "INVALID_RESTAURANT_ID", message: "restaurantId invalide ou manquant." }, 400);
-  }
-
+async function handleClaim(supabase: SupabaseClient, orderId: string): Promise<Response> {
+  // Pas de restaurantId ici : la tablette ne l'envoie pas sur /claim (elle ne
+  // le connaît déjà que via /jobs, filtré côté serveur). order_id (uuid non
+  // devinable) + le token print-agent suffisent à identifier le job.
   const { data, error } = await supabase.rpc("claim_print_job", {
     p_order_id: orderId,
-    p_restaurant_id: restaurantId,
   });
 
   if (error) {
@@ -446,7 +444,7 @@ Deno.serve(async (req: Request) => {
       if (!isUuid(orderId)) {
         return jsonResponse({ code: "INVALID_ORDER_ID", message: "orderId invalide." }, 400);
       }
-      if (action === "claim") return await handleClaim(supabase, url, orderId);
+      if (action === "claim") return await handleClaim(supabase, orderId);
       if (action === "printed") return await handlePrinted(supabase, req, orderId);
       if (action === "failed") return await handleFailed(supabase, req, orderId);
     }
