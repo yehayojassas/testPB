@@ -20,12 +20,14 @@
 //                                    n'existe a ce jour — verifier si une 1.1.0 stable est
 //                                    sortie avant de figer la release).
 //
-// Toutes ces versions sont centralisees dans gradle/libs.versions.toml.
+// Toutes ces versions sont centralisees dans gradle/libs.versions.toml — c'est l'unique
+// source de verite (les plugins ci-dessous y font reference via alias plutot que de
+// redeclarer un numero de version en dur, pour ne jamais pouvoir diverger).
 plugins {
-    id("com.android.application") version "8.5.2" apply false
-    id("org.jetbrains.kotlin.android") version "1.9.24" apply false
-    id("com.google.devtools.ksp") version "1.9.24-1.0.20" apply false
-    id("com.google.dagger.hilt.android") version "2.51.1" apply false
+    alias(libs.plugins.android.application) apply false
+    alias(libs.plugins.kotlin.android) apply false
+    alias(libs.plugins.ksp) apply false
+    alias(libs.plugins.hilt) apply false
 }
 
 tasks.register("clean", Delete::class) {

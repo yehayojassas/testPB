@@ -154,32 +154,34 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun onSave() {
+        viewModelScope.launch { persistSettings() }
+    }
+
+    private suspend fun persistSettings() {
         val state = _uiState.value
         if (!state.isFormValid) return
-        viewModelScope.launch {
-            settingsRepository.updateSettings(
-                PrinterSettings(
-                    apiBaseUrl = state.apiBaseUrl.trim(),
-                    restaurantId = state.restaurantId.trim(),
-                    storeName = state.storeName.ifBlank { PrinterSettings.defaults().storeName },
-                    printerIp = state.printerIp.trim(),
-                    printerPort = state.printerPortText.toIntOrNull() ?: PrinterSettings.DEFAULT_PRINTER_PORT,
-                    pollingIntervalSeconds = state.pollingIntervalSeconds,
-                    cutPaperEnabled = state.cutPaperEnabled,
-                    cashDrawerEnabled = state.cashDrawerEnabled,
-                    ticketWidth = state.ticketWidth,
-                    developerModeEnabled = state.developerModeEnabled,
-                ),
-            )
-            if (state.tokenInput.isNotBlank()) {
-                settingsRepository.setToken(state.tokenInput.trim())
-            }
-            _uiState.value = _uiState.value.copy(
-                tokenInput = "",
-                hasStoredToken = settingsRepository.hasToken(),
-                savedConfirmationVisible = true,
-            )
+        settingsRepository.updateSettings(
+            PrinterSettings(
+                apiBaseUrl = state.apiBaseUrl.trim(),
+                restaurantId = state.restaurantId.trim(),
+                storeName = state.storeName.ifBlank { PrinterSettings.defaults().storeName },
+                printerIp = state.printerIp.trim(),
+                printerPort = state.printerPortText.toIntOrNull() ?: PrinterSettings.DEFAULT_PRINTER_PORT,
+                pollingIntervalSeconds = state.pollingIntervalSeconds,
+                cutPaperEnabled = state.cutPaperEnabled,
+                cashDrawerEnabled = state.cashDrawerEnabled,
+                ticketWidth = state.ticketWidth,
+                developerModeEnabled = state.developerModeEnabled,
+            ),
+        )
+        if (state.tokenInput.isNotBlank()) {
+            settingsRepository.setToken(state.tokenInput.trim())
         }
+        _uiState.value = _uiState.value.copy(
+            tokenInput = "",
+            hasStoredToken = settingsRepository.hasToken(),
+            savedConfirmationVisible = true,
+        )
     }
 
     fun onSavedConfirmationShown() {
@@ -206,8 +208,13 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun onStartAgent() {
-        onSave()
-        ContextCompat.startForegroundService(context, Intent(context, PrinterForegroundService::class.java))
+        // Attend explicitement la fin de la persistence des reglages avant de demarrer le
+        // service : demarrer en parallele d'un onSave() encore en vol risquerait un premier
+        // cycle de l'agent execute avec une IP/URL pas encore a jour dans DataStore.
+        viewModelScope.launch {
+            persistSettings()
+            ContextCompat.startForegroundService(context, Intent(context, PrinterForegroundService::class.java))
+        }
     }
 
     fun onStopAgent() {
