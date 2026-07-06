@@ -1,6 +1,8 @@
 package ch.planetebowl.printagent.service
 
 import ch.planetebowl.printagent.common.TextSanitizer
+import ch.planetebowl.printagent.common.onFailure
+import ch.planetebowl.printagent.common.onSuccess
 import ch.planetebowl.printagent.domain.model.PrinterSettings
 import ch.planetebowl.printagent.domain.repository.QueueRepository
 import ch.planetebowl.printagent.domain.repository.SettingsRepository

@@ -86,7 +86,10 @@ class QueueRepositoryImpl @Inject constructor(
     }
 
     override suspend fun findNextClaimable(now: Instant): PrintJob? =
-        printJobDao.findNextClaimable(now)?.let(::toDomain)
+        // `let { toDomain(it) }` plutot que `let(::toDomain)` : toDomain est suspend, une
+        // reference de fonction ne peut pas etre passee a un parametre non-suspend meme si
+        // `let` est inline — seul un lambda litteral permet l'appel suspendu transparent.
+        printJobDao.findNextClaimable(now)?.let { toDomain(it) }
 
     override suspend fun claimJob(job: PrintJob): ClaimOutcome {
         val attemptNumber = job.attemptCount + 1
@@ -235,10 +238,10 @@ class QueueRepositoryImpl @Inject constructor(
     }
 
     override suspend fun findAllPendingAck(): List<PrintJob> =
-        printJobDao.findPendingAckReady(Instant.now()).map(::toDomain)
+        printJobDao.findPendingAckReady(Instant.now()).map { toDomain(it) }
 
     override fun observeRecentJobs(limit: Int): Flow<List<PrintJob>> =
-        printJobDao.observeRecent(limit).map { entities -> entities.map(::toDomain) }
+        printJobDao.observeRecent(limit).map { entities -> entities.map { entity -> toDomain(entity) } }
 
     override suspend fun failAllStuckInPrinting(): Int = printJobDao.failAllStuckInPrinting()
 
