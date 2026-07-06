@@ -35,7 +35,15 @@ fun LabeledTextField(
         supportingText = {
             Text(text = errorMessage ?: supportingText.orEmpty(), style = MaterialTheme.typography.bodyMedium)
         },
-        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        // isPassword force KeyboardType.Password (pas seulement le masquage visuel) : c'est
+        // ce type de clavier qui desactive reellement la correction/capitalisation
+        // automatique cote IME. Sans ca, un champ masque par des points laisse l'utilisateur
+        // taper "a l'aveugle" pendant qu'un clavier texte standard autocorrige silencieusement
+        // le contenu (ex: un token) sans qu'il puisse s'en apercevoir a l'ecran.
+        keyboardOptions = KeyboardOptions(
+            keyboardType = if (isPassword) KeyboardType.Password else keyboardType,
+            autoCorrectEnabled = !isPassword,
+        ),
         visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
         trailingIcon = trailingIcon,
         textStyle = MaterialTheme.typography.bodyLarge,
