@@ -76,3 +76,147 @@ create trigger orders_enqueue_print_job
   for each row
   when (old.status = 'received' and new.status = 'preparing')
   execute function public.enqueue_print_job();
+
+-- ---------------------------------------------------------------------------
+-- Opérations atomiques pour l'Edge Function print-agent
+-- ---------------------------------------------------------------------------
+-- Le claim doit être une seule requête UPDATE ... RETURNING pour éviter que
+-- deux tablettes (ou deux tentatives concurrentes de la même tablette)
+-- réclament le même ticket : un aller-retour "SELECT puis UPDATE" depuis le
+-- code applicatif laisserait une fenêtre de course. Ces trois fonctions sont
+-- donc les seules autorisées à écrire dans print_jobs, appelées uniquement
+-- par l'Edge Function via la clé service_role (jamais par anon/authenticated).
+
+create or replace function public.claim_print_job(p_order_id uuid, p_restaurant_id uuid)
+returns jsonb
+language plpgsql security definer
+set search_path = public
+as $$
+declare
+  v_row public.print_jobs%rowtype;
+begin
+  update public.print_jobs
+     set status = 'CLAIMED',
+         claim_token = gen_random_uuid(),
+         claim_expires_at = now() + interval '90 seconds',
+         attempt_count = attempt_count + 1
+   where order_id = p_order_id
+     and restaurant_id = p_restaurant_id
+     and (status = 'PENDING' or (status = 'CLAIMED' and claim_expires_at < now()))
+     and attempt_count < max_attempts
+   returning * into v_row;
+
+  if found then
+    return jsonb_build_object(
+      'resultStatus', 'CLAIMED',
+      'claimToken', v_row.claim_token,
+      'claimExpiresAt', v_row.claim_expires_at
+    );
+  end if;
+
+  -- Rien mis à jour : on relit la ligne pour renvoyer le bon code d'erreur au client.
+  select * into v_row from public.print_jobs
+    where order_id = p_order_id and restaurant_id = p_restaurant_id;
+
+  if not found then
+    return jsonb_build_object('resultStatus', 'NOT_FOUND');
+  end if;
+
+  if v_row.status = 'CONFIRMED' then
+    return jsonb_build_object('resultStatus', 'ALREADY_PRINTED');
+  end if;
+
+  if v_row.attempt_count >= v_row.max_attempts then
+    update public.print_jobs set status = 'MANUAL_REVIEW' where order_id = p_order_id;
+    return jsonb_build_object('resultStatus', 'MAX_ATTEMPTS_REACHED');
+  end if;
+
+  return jsonb_build_object('resultStatus', 'ALREADY_CLAIMED');
+end;
+$$;
+
+create or replace function public.confirm_print_job(
+  p_order_id uuid,
+  p_claim_token uuid,
+  p_printed_at timestamptz
+)
+returns jsonb
+language plpgsql security definer
+set search_path = public
+as $$
+declare
+  v_row public.print_jobs%rowtype;
+begin
+  update public.print_jobs
+     set status = 'CONFIRMED',
+         printed_at = coalesce(p_printed_at, now()),
+         confirmed_at = now()
+   where order_id = p_order_id and claim_token = p_claim_token and status = 'CLAIMED'
+   returning * into v_row;
+
+  if found then
+    return jsonb_build_object('resultStatus', 'CONFIRMED');
+  end if;
+
+  -- Rejeu possible (la tablette n'a pas reçu la réponse la première fois) :
+  -- si c'est bien le même jeton qui a déjà confirmé, on répond sans erreur.
+  select * into v_row from public.print_jobs where order_id = p_order_id;
+  if found and v_row.status = 'CONFIRMED' and v_row.claim_token = p_claim_token then
+    return jsonb_build_object('resultStatus', 'ALREADY_CONFIRMED');
+  end if;
+
+  return jsonb_build_object('resultStatus', 'CLAIM_MISMATCH');
+end;
+$$;
+
+create or replace function public.release_print_job(
+  p_order_id uuid,
+  p_claim_token uuid,
+  p_error_code text,
+  p_error_message text
+)
+returns jsonb
+language plpgsql security definer
+set search_path = public
+as $$
+declare
+  v_row public.print_jobs%rowtype;
+  v_next_status text;
+begin
+  select * into v_row
+    from public.print_jobs
+    where order_id = p_order_id and claim_token = p_claim_token and status = 'CLAIMED';
+
+  if not found then
+    return jsonb_build_object('resultStatus', 'CLAIM_MISMATCH');
+  end if;
+
+  v_next_status := case when v_row.attempt_count >= v_row.max_attempts then 'MANUAL_REVIEW' else 'PENDING' end;
+
+  -- Le job est libéré (repasse PENDING) pour qu'un prochain essai puisse le
+  -- réclamer, sauf si le nombre maximal de tentatives est atteint : dans ce
+  -- cas terminal (MANUAL_REVIEW), on ne réinitialise pas claim_token/expiry
+  -- pour garder une trace de la dernière tentative en échec.
+  update public.print_jobs
+     set status = v_next_status,
+         claim_token = case when v_next_status = 'PENDING' then null else claim_token end,
+         claim_expires_at = case when v_next_status = 'PENDING' then null else claim_expires_at end,
+         last_error_code = left(p_error_code, 100),
+         last_error_message = left(p_error_message, 500)
+   where order_id = p_order_id and claim_token = p_claim_token;
+
+  return jsonb_build_object('resultStatus', v_next_status);
+end;
+$$;
+
+-- Ces fonctions ne doivent jamais être appelables par un client (anon ou
+-- authenticated) : elles contournent volontairement les vérifications
+-- métier normales (place_order, RLS) et ne doivent être invoquées que par
+-- l'Edge Function print-agent, authentifiée avec la clé service_role.
+revoke execute on function public.claim_print_job(uuid, uuid) from public;
+revoke execute on function public.confirm_print_job(uuid, uuid, timestamptz) from public;
+revoke execute on function public.release_print_job(uuid, uuid, text, text) from public;
+
+grant execute on function public.claim_print_job(uuid, uuid) to service_role;
+grant execute on function public.confirm_print_job(uuid, uuid, timestamptz) to service_role;
+grant execute on function public.release_print_job(uuid, uuid, text, text) to service_role;
