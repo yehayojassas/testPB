@@ -49,13 +49,19 @@ class TcpEscPosPrinterClient @Inject constructor(
 
             var socket: Socket? = null
             try {
-                socket = Socket()
-                val address = resolveAddress(host) ?: return@withLock PrintResult.DnsResolutionFailed(host)
-                socket.connect(InetSocketAddress(address, port), CONNECT_TIMEOUT_MS)
+                // connect() et write()/flush() sont tous deux bloquants : toute la section
+                // reseau doit tourner sur Dispatchers.IO, sinon un appelant sur le thread
+                // principal (ex. boutons "Tester la connexion"/"Tester l'impression" via
+                // viewModelScope) gele l'UI jusqu'a CONNECT_TIMEOUT_MS en cas d'imprimante
+                // injoignable.
+                withContext(Dispatchers.IO) {
+                    // getByName leve UnknownHostException si la resolution echoue,
+                    // deja geree par le catch ci-dessous — pas besoin d'un cas nul separe.
+                    val address = java.net.InetAddress.getByName(host)
+                    socket = Socket().also { it.connect(InetSocketAddress(address, port), CONNECT_TIMEOUT_MS) }
 
-                withTimeout(WRITE_TIMEOUT_MS) {
-                    withContext(Dispatchers.IO) {
-                        socket.getOutputStream().apply {
+                    withTimeout(WRITE_TIMEOUT_MS) {
+                        socket!!.getOutputStream().apply {
                             write(ticketBytes)
                             flush()
                         }
@@ -85,12 +91,6 @@ class TcpEscPosPrinterClient @Inject constructor(
                 }
             }
         }
-
-    private fun resolveAddress(host: String) = try {
-        java.net.InetAddress.getByName(host)
-    } catch (e: UnknownHostException) {
-        null
-    }
 
     private fun isNetworkAvailable(): Boolean {
         val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
